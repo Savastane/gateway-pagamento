@@ -1,0 +1,76 @@
+# Gateway: ASAAS (grpc :50053)
+# Auth: access_token $aact_... ; dinheiro convertido p/ decimal pelo adapter.
+# Cartao: creditCardToken (habilitacao na conta!) + remoteIp => customer.ip obrigatorio.
+# Parcelas: installmentCount + totalValue.
+# Cancelamento funciona (DELETE /payments/{id}); webhook valida asaas-access-token (token estatico).
+# Sem idempotencia nativa — externalReference recebe a Idempotency-Key.
+
+@host = http://localhost:8080
+@apiKey = {{$dotenv API_KEY}}
+@gateway = asaas
+
+### Health
+GET {{host}}/health
+
+### Criar pagamento PIX (tax_id = cpfCnpj do cliente)
+# @name createPix
+POST {{host}}/v1/payments
+Content-Type: application/json
+X-Api-Key: {{apiKey}}
+Idempotency-Key: asaas-pix-{{$guid}}
+
+{
+  "gateway": "asaas",
+  "amount_minor": 12990,
+  "currency": "brl",
+  "method": { "type": "pix" },
+  "customer": {
+    "name": "Ana Silva",
+    "email": "ana@example.com",
+    "tax_id": "12345678909",
+    "phone": "11999998888"
+  },
+  "description": "Pedido #3001"
+}
+
+### Criar pagamento CARTAO parcelado (creditCardToken + ip do pagador)
+# @name createCard
+POST {{host}}/v1/payments
+Content-Type: application/json
+X-Api-Key: {{apiKey}}
+Idempotency-Key: asaas-card-{{$guid}}
+
+{
+  "gateway": "asaas",
+  "amount_minor": 120000,
+  "currency": "brl",
+  "method": { "type": "card", "token": "CREDIT_CARD_TOKEN_ASAAS", "installments": 3 },
+  "customer": {
+    "name": "Ana Silva",
+    "email": "ana@example.com",
+    "tax_id": "12345678909",
+    "phone": "11999998888",
+    "ip": "203.0.113.10"
+  },
+  "description": "Pedido #3002"
+}
+
+### Consultar pagamento
+GET {{host}}/v1/payments/{{createPix.response.body.id}}
+X-Api-Key: {{apiKey}}
+
+### Estorno parcial
+POST {{host}}/v1/payments/{{createCard.response.body.id}}/refunds
+Content-Type: application/json
+X-Api-Key: {{apiKey}}
+Idempotency-Key: asaas-ref-{{$guid}}
+
+{ "amount_minor": 30000 }
+
+### Estorno total
+POST {{host}}/v1/payments/{{createCard.response.body.id}}/refunds
+Content-Type: application/json
+X-Api-Key: {{apiKey}}
+Idempotency-Key: asaas-ref-total-{{$guid}}
+
+{}

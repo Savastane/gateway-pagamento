@@ -1,0 +1,73 @@
+# Gateway: MERCADO PAGO (grpc :50054)
+# Auth: Bearer TEST-/APP_USR- ; idempotencia nativa (X-Idempotency-Key repassada).
+# PIX retorna qr_code (EMV) + qr_code_base64 + ticket_url na propria resposta.
+# tax_id: CPF (11) ou CNPJ (14) — o adapter infere o tipo pelo tamanho.
+# Cancelamento via PUT {status:"cancelled"}; refund POST /payments/{id}/refunds.
+# Webhook: HMAC-SHA256 do manifesto id:{data.id};request-id:...;ts:...
+
+@host = http://localhost:8080
+@apiKey = {{$dotenv API_KEY}}
+@gateway = mercadopago
+
+### Health
+GET {{host}}/health
+
+### Criar pagamento PIX
+# @name createPix
+POST {{host}}/v1/payments
+Content-Type: application/json
+X-Api-Key: {{apiKey}}
+Idempotency-Key: mp-pix-{{$guid}}
+
+{
+  "gateway": "mercadopago",
+  "amount_minor": 12990,
+  "currency": "brl",
+  "method": { "type": "pix", "expires_after_seconds": 3600 },
+  "customer": {
+    "name": "Ana Silva",
+    "email": "ana@example.com",
+    "tax_id": "12345678909"
+  },
+  "description": "Pedido #4001"
+}
+
+### Criar pagamento CARTAO (token do Mercado Pago.js / CardForm)
+# @name createCard
+POST {{host}}/v1/payments
+Content-Type: application/json
+X-Api-Key: {{apiKey}}
+Idempotency-Key: mp-card-{{$guid}}
+
+{
+  "gateway": "mercadopago",
+  "amount_minor": 120000,
+  "currency": "brl",
+  "method": { "type": "card", "token": "TOKEN_MERCADOPAGO_JS", "installments": 3 },
+  "customer": {
+    "name": "Ana Silva",
+    "email": "ana@example.com",
+    "tax_id": "12345678909"
+  },
+  "description": "Pedido #4002"
+}
+
+### Consultar pagamento
+GET {{host}}/v1/payments/{{createPix.response.body.id}}
+X-Api-Key: {{apiKey}}
+
+### Estorno parcial
+POST {{host}}/v1/payments/{{createCard.response.body.id}}/refunds
+Content-Type: application/json
+X-Api-Key: {{apiKey}}
+Idempotency-Key: mp-ref-{{$guid}}
+
+{ "amount_minor": 30000 }
+
+### Estorno total
+POST {{host}}/v1/payments/{{createCard.response.body.id}}/refunds
+Content-Type: application/json
+X-Api-Key: {{apiKey}}
+Idempotency-Key: mp-ref-total-{{$guid}}
+
+{}

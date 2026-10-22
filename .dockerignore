@@ -1,0 +1,6 @@
+target/
+.git/
+**/.git/
+planejamento/
+docker/
+*.md

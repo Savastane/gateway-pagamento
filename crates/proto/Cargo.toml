@@ -1,0 +1,12 @@
+[package]
+name = "gateway-proto"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+tonic.workspace = true
+prost.workspace = true
+
+[build-dependencies]
+tonic-build.workspace = true
+protoc-bin-vendored.workspace = true

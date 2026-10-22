@@ -1,0 +1,108 @@
+name: gateway-pagamento
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-gw}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d $${POSTGRES_DB:-gw}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  gateway-stripe:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: gateway-pagamento:latest
+    command: ["/usr/local/bin/gateway-stripe"]
+    environment:
+      GRPC_ADDR: 0.0.0.0:50051
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-sk_test_replace_me}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_API_BASE: ${STRIPE_API_BASE:-https://api.stripe.com}
+    ports:
+      - "50051:50051"
+
+  gateway-appmax:
+    image: gateway-pagamento:latest
+    command: ["/usr/local/bin/gateway-appmax"]
+    environment:
+      GRPC_ADDR: 0.0.0.0:50052
+      APPMAX_CLIENT_ID: ${APPMAX_CLIENT_ID:-}
+      APPMAX_CLIENT_SECRET: ${APPMAX_CLIENT_SECRET:-}
+      APPMAX_API_BASE: ${APPMAX_API_BASE:-https://api.sandboxappmax.com.br}
+    ports:
+      - "50052:50052"
+
+  gateway-asaas:
+    image: gateway-pagamento:latest
+    command: ["/usr/local/bin/gateway-asaas"]
+    environment:
+      GRPC_ADDR: 0.0.0.0:50053
+      # formato valido apenas para boot em dev; sobrescreva via .env
+      ASAAS_ACCESS_TOKEN: ${ASAAS_ACCESS_TOKEN:-$$aact_dev_replace_me}
+      ASAAS_API_BASE: ${ASAAS_API_BASE:-https://api-sandbox.asaas.com/v3}
+      ASAAS_WEBHOOK_TOKEN: ${ASAAS_WEBHOOK_TOKEN:-}
+    ports:
+      - "50053:50053"
+
+  gateway-mercadopago:
+    image: gateway-pagamento:latest
+    command: ["/usr/local/bin/gateway-mercadopago"]
+    environment:
+      GRPC_ADDR: 0.0.0.0:50054
+      # formato valido apenas para boot em dev; sobrescreva via .env
+      MP_ACCESS_TOKEN: ${MP_ACCESS_TOKEN:-TEST-0-000000-00000000000000000000000000000000-0}
+      MP_WEBHOOK_SECRET: ${MP_WEBHOOK_SECRET:-}
+      MP_API_BASE: ${MP_API_BASE:-https://api.mercadopago.com}
+    ports:
+      - "50054:50054"
+
+  webhook-pagamento:
+    image: gateway-pagamento:latest
+    command: ["/usr/local/bin/webhook-pagamento"]
+    environment:
+      HTTP_ADDR: 0.0.0.0:8081
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-gw}
+      GATEWAY_STRIPE_ADDR: http://gateway-stripe:50051
+      GATEWAY_APPMAX_ADDR: http://gateway-appmax:50052
+      GATEWAY_ASAAS_ADDR: http://gateway-asaas:50053
+      GATEWAY_MERCADOPAGO_ADDR: http://gateway-mercadopago:50054
+      API_CALLBACK_URL: http://api-pagamento:8080/internal/gateway-events
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-}
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api-pagamento:
+        condition: service_started
+
+  api-pagamento:
+    image: gateway-pagamento:latest
+    command: ["/usr/local/bin/api-pagamento"]
+    environment:
+      HTTP_ADDR: 0.0.0.0:8080
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-gw}
+      GATEWAY_STRIPE_ADDR: http://gateway-stripe:50051
+      GATEWAY_APPMAX_ADDR: http://gateway-appmax:50052
+      GATEWAY_ASAAS_ADDR: http://gateway-asaas:50053
+      GATEWAY_MERCADOPAGO_ADDR: http://gateway-mercadopago:50054
+      DEFAULT_GATEWAY: ${DEFAULT_GATEWAY:-stripe}
+      API_KEY: ${API_KEY:-}
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:

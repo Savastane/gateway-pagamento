@@ -1,0 +1,60 @@
+use secrecy::SecretString;
+use std::net::SocketAddr;
+use std::time::Duration;
+
+#[derive(Debug, thiserror::Error)]
+pub enum ConfigError {
+    #[error("variavel de ambiente obrigatoria ausente: {0}")]
+    Missing(&'static str),
+    #[error(
+        "MP_ACCESS_TOKEN invalido: deve ser um access token do mercado pago (TEST-... ou APP_USR-...)"
+    )]
+    InvalidToken,
+    #[error("GRPC_ADDR invalido: {0}")]
+    InvalidAddr(String),
+    #[error("HTTP_TIMEOUT_MS invalido: {0}")]
+    InvalidTimeout(String),
+}
+
+#[derive(Debug, Clone)]
+pub struct Config {
+    pub grpc_addr: SocketAddr,
+    pub api_base: String,
+    pub access_token: SecretString,
+    pub webhook_secret: Option<SecretString>,
+    pub http_timeout: Duration,
+}
+
+impl Config {
+    pub fn from_env() -> Result<Self, ConfigError> {
+        let access_token = std::env::var("MP_ACCESS_TOKEN")
+            .map_err(|_| ConfigError::Missing("MP_ACCESS_TOKEN"))?;
+        if !access_token.starts_with("TEST-") && !access_token.starts_with("APP_USR-") {
+            return Err(ConfigError::InvalidToken);
+        }
+
+        let webhook_secret = std::env::var("MP_WEBHOOK_SECRET")
+            .ok()
+            .filter(|t| !t.is_empty())
+            .map(|t| SecretString::new(t.into()));
+
+        Ok(Self {
+            grpc_addr: std::env::var("GRPC_ADDR")
+                .unwrap_or_else(|_| "0.0.0.0:50054".to_string())
+                .parse()
+                .map_err(|_| {
+                    ConfigError::InvalidAddr(std::env::var("GRPC_ADDR").unwrap_or_default())
+                })?,
+            api_base: std::env::var("MP_API_BASE")
+                .unwrap_or_else(|_| "https://api.mercadopago.com".to_string()),
+            access_token: SecretString::new(access_token.into()),
+            webhook_secret,
+            http_timeout: Duration::from_millis(match std::env::var("HTTP_TIMEOUT_MS") {
+                Ok(v) => v
+                    .parse::<u64>()
+                    .map_err(|_| ConfigError::InvalidTimeout(v))?,
+                Err(_) => 30_000,
+            }),
+        })
+    }
+}

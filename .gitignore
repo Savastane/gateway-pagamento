@@ -1,0 +1,51 @@
+# --- Rust / Cargo (todos os crates do workspace) ---
+target/
+**/target/
+**/*.rs.bk
+*.pdb
+Cargo.lock.bak
+
+# --- Segredos e ambiente (NUNCA commitar) ---
+.env
+.env.*
+!.env.example
+!**/.env.example
+*.pem
+*.key
+secrets/
+*.local
+
+# --- Docker ---
+docker/.env
+docker-compose.override.yml
+compose.override.yml
+
+# --- IDEs ---
+.idea/
+.vscode/
+*.iml
+*.code-workspace
+*.swp
+*.swo
+*~
+
+# --- SO ---
+Thumbs.db
+desktop.ini
+.DS_Store
+$RECYCLE.BIN/
+
+# --- Logs e temporarios ---
+*.log
+*.tmp
+*.bak
+nohup.out
+
+# --- Documentacao de planejamento (interna) ---
+planejamento/
+
+# --- Tooling local ---
+# Stripe CLI sandbox state
+.stripe/
+# grpcurl/proto cache local
+.proto-cache/

@@ -1,0 +1,27 @@
+[package]
+name = "webhook-pagamento"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+gateway-proto.workspace = true
+banco.workspace = true
+tonic.workspace = true
+prost.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+axum.workspace = true
+sqlx.workspace = true
+async-trait.workspace = true
+bytes.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+secrecy.workspace = true
+chrono.workspace = true
+reqwest.workspace = true
+
+[dev-dependencies]
+wiremock.workspace = true
+tower.workspace = true

@@ -1,0 +1,57 @@
+# Endpoints internos — NAO sao parte da API publica.
+# /internal/gateway-events: callback que o webhook-pagamento chama apos
+# normalizar um evento de provedor. Auth: Bearer INTERNAL_TOKEN.
+# /health: liveness, sem auth.
+#
+# Simular um evento: o `external_id` deve bater com um payment existente
+# (campo external_id da resposta de POST /v1/payments).
+# status segue o enum do proto:
+#   0 UNSPECIFIED | 1 PENDING | 2 REQUIRES_ACTION | 3 AUTHORIZED
+#   4 PAID | 5 FAILED | 6 CANCELED | 7 EXPIRED | 8 REFUNDED | 9 PARTIALLY_REFUNDED
+
+@host = http://localhost:8080
+@internalToken = {{$dotenv INTERNAL_TOKEN}}
+@externalId = pi_COLE_AQUI_O_EXTERNAL_ID
+
+### Health (sem auth)
+GET {{host}}/health
+
+### Evento: pagamento aprovado (PAID=4)
+POST {{host}}/internal/gateway-events
+Content-Type: application/json
+Authorization: Bearer {{internalToken}}
+
+{
+  "gateway": "stripe",
+  "provider_event_id": "evt_manual_1",
+  "event_type": "payment_intent.succeeded",
+  "external_id": "{{externalId}}",
+  "status": 4,
+  "provider_payload": { "simulado": true }
+}
+
+### Evento: estorno confirmado (REFUNDED=8)
+POST {{host}}/internal/gateway-events
+Content-Type: application/json
+Authorization: Bearer {{internalToken}}
+
+{
+  "gateway": "stripe",
+  "provider_event_id": "evt_manual_2",
+  "event_type": "charge.refunded",
+  "external_id": "{{externalId}}",
+  "status": 8,
+  "provider_payload": { "simulado": true }
+}
+
+### Sem token => 401
+POST {{host}}/internal/gateway-events
+Content-Type: application/json
+
+{
+  "gateway": "stripe",
+  "provider_event_id": "evt_manual_3",
+  "event_type": "payment_intent.succeeded",
+  "external_id": "{{externalId}}",
+  "status": 4
+}

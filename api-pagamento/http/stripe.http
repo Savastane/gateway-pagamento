@@ -1,0 +1,84 @@
+# Gateway: STRIPE (grpc :50051)
+# SDK de tokenizacao: Stripe.js / PaymentMethod (pm_...)
+# PIX exige return_url + customer.tax_id (CPF). Dinheiro em centavos.
+# Idempotencia nativa do provedor (Idempotency-Key e repassada).
+# Webhook: HMAC-SHA256 (whsec_...) — veja internal.http.
+
+@host = http://localhost:8080
+@apiKey = {{$dotenv API_KEY}}
+@gateway = stripe
+
+### Health
+GET {{host}}/health
+
+### Criar pagamento PIX
+# @name createPix
+POST {{host}}/v1/payments
+Content-Type: application/json
+X-Api-Key: {{apiKey}}
+Idempotency-Key: stripe-pix-{{$guid}}
+
+{
+  "gateway": "stripe",
+  "amount_minor": 12990,
+  "currency": "brl",
+  "method": { "type": "pix", "expires_after_seconds": 3600 },
+  "customer": {
+    "name": "Ana Silva",
+    "email": "ana@example.com",
+    "tax_id": "12345678909"
+  },
+  "return_url": "https://minha-loja.test/checkout/retorno",
+  "description": "Pedido #1001"
+}
+
+### Criar pagamento CARTAO (token pm_card_visa funciona em sandbox)
+# @name createCard
+POST {{host}}/v1/payments
+Content-Type: application/json
+X-Api-Key: {{apiKey}}
+Idempotency-Key: stripe-card-{{$guid}}
+
+{
+  "gateway": "stripe",
+  "amount_minor": 5000,
+  "currency": "brl",
+  "method": { "type": "card", "token": "pm_card_visa", "installments": 1 },
+  "customer": { "name": "Ana Silva", "email": "ana@example.com" },
+  "description": "Pedido #1002"
+}
+
+### Replay de idempotencia (mesma key + mesmo corpo => mesma resposta)
+POST {{host}}/v1/payments
+Content-Type: application/json
+X-Api-Key: {{apiKey}}
+Idempotency-Key: stripe-pix-replay-fixo
+
+{
+  "gateway": "stripe",
+  "amount_minor": 12990,
+  "currency": "brl",
+  "method": { "type": "pix" },
+  "customer": { "name": "Ana Silva", "email": "ana@example.com", "tax_id": "12345678909" },
+  "return_url": "https://minha-loja.test/checkout/retorno"
+}
+
+### Consultar pagamento (rebusca status no provedor)
+GET {{host}}/v1/payments/{{createPix.response.body.id}}
+X-Api-Key: {{apiKey}}
+
+### Estorno parcial
+POST {{host}}/v1/payments/{{createCard.response.body.id}}/refunds
+Content-Type: application/json
+X-Api-Key: {{apiKey}}
+Idempotency-Key: stripe-ref-{{$guid}}
+
+{ "amount_minor": 1000 }
+
+### Estorno total (amount_minor ausente = restante)
+POST {{host}}/v1/payments/{{createCard.response.body.id}}/refunds
+Content-Type: application/json
+X-Api-Key: {{apiKey}}
+Idempotency-Key: stripe-ref-total-{{$guid}}
+
+{}

@@ -1,0 +1,77 @@
+# Gateway: APPMAX (grpc :50052)
+# Somente BRL. OAuth2 client_credentials no adapter.
+# OBRIGATORIOS: customer.phone e customer.ip (antifraude). Cartao: token Appmax.js + installments.
+# NAO TEM cancelamento (CancelPayment -> 501 no futuro) nem idempotencia nativa —
+# a deduplicacao fica nesta API (Idempotency-Key).
+# Webhook sem HMAC: validacao por allowlist de IP no receptor.
+
+@host = http://localhost:8080
+@apiKey = {{$dotenv API_KEY}}
+@gateway = appmax
+
+### Health
+GET {{host}}/health
+
+### Criar pagamento PIX
+# @name createPix
+POST {{host}}/v1/payments
+Content-Type: application/json
+X-Api-Key: {{apiKey}}
+Idempotency-Key: appmax-pix-{{$guid}}
+
+{
+  "gateway": "appmax",
+  "amount_minor": 12990,
+  "currency": "brl",
+  "method": { "type": "pix", "expires_after_seconds": 3600 },
+  "customer": {
+    "name": "Ana Silva",
+    "email": "ana@example.com",
+    "tax_id": "12345678909",
+    "phone": "+5511999998888",
+    "ip": "203.0.113.10"
+  },
+  "description": "Pedido #2001"
+}
+
+### Criar pagamento CARTAO parcelado (token do Appmax.js)
+# @name createCard
+POST {{host}}/v1/payments
+Content-Type: application/json
+X-Api-Key: {{apiKey}}
+Idempotency-Key: appmax-card-{{$guid}}
+
+{
+  "gateway": "appmax",
+  "amount_minor": 120000,
+  "currency": "brl",
+  "method": { "type": "card", "token": "TOKEN_APPMAX_JS", "installments": 3 },
+  "customer": {
+    "name": "Ana Silva",
+    "email": "ana@example.com",
+    "tax_id": "12345678909",
+    "phone": "+5511999998888",
+    "ip": "203.0.113.10"
+  },
+  "description": "Pedido #2002"
+}
+
+### Consultar pagamento
+GET {{host}}/v1/payments/{{createPix.response.body.id}}
+X-Api-Key: {{apiKey}}
+
+### Estorno parcial (assincrono — confirmacao chega via webhook order_refund)
+POST {{host}}/v1/payments/{{createCard.response.body.id}}/refunds
+Content-Type: application/json
+X-Api-Key: {{apiKey}}
+Idempotency-Key: appmax-ref-{{$guid}}
+
+{ "amount_minor": 30000 }
+
+### Estorno total
+POST {{host}}/v1/payments/{{createCard.response.body.id}}/refunds
+Content-Type: application/json
+X-Api-Key: {{apiKey}}
+Idempotency-Key: appmax-ref-total-{{$guid}}
+
+{}
