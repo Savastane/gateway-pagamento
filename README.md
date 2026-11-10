@@ -31,7 +31,7 @@ gateway-pagamento/
 │   └── http/                                # arquivos .http de teste por gateway (REST Client)
 ├── webhooks/                                # webhook-pagamento: recepcao, dedup, forward
 ├── stripe/   appmax/   asaas/   mercadopago/ # um servico gRPC por provedor
-├── docker/                                  # compose + imagem unica dos 6 binarios
+├── Dockerfile + compose.yml                 # imagem unica dos 6 binarios + stack completa
 └── planejamento/plano-api-pagamento.md      # plano de arquitetura e status
 ```
 
@@ -88,7 +88,7 @@ sem troca de precos/prorata nesta versao.
 | **RFC 7807** | `api-pagamento` (`ProblemDetails`) | `application/problem+json`; códigos gRPC mapeados para HTTP |
 | **Secrets timing-safe** | todos | `subtle::ConstantTimeEq` em `X-Api-Key`, `INTERNAL_TOKEN` e assinaturas HMAC; segredos só via env (`secrecy::SecretString`) |
 | **Webhook: persistir → responder → forward** | `webhook-pagamento` | 2xx só após `INSERT ... ON CONFLICT`; reprocessador retoma falhas |
-| **Imagem única multi-binário** | `docker/` | Um `cargo build --release` gera os 6 binários; serviços do compose só mudam o `command` |
+| **Imagem única multi-binário** | `Dockerfile` + `compose.yml` (raiz) | Um `cargo build --release` gera os 6 binários; serviços do compose só mudam o `command` |
 | **Smoke example por crate** | cada gateway | `examples/smoke.rs` com target `smoke-<provedor>` (nomes únicos evitam colisão) |
 
 ## Princípios do contrato
@@ -103,7 +103,7 @@ sem troca de precos/prorata nesta versao.
 
 ```bash
 # 1. credenciais
-cd docker && cp .env.example .env   # preencher chaves sandbox
+cp .env.example .env   # preencher chaves sandbox (na raiz do repo)
 
 # 2. subir tudo (imagem unica, ~1min de build)
 docker compose up -d --build
@@ -153,3 +153,5 @@ cargo test --workspace
 | Auth do webhook | HMAC corpo | **nenhuma** | token estático | HMAC manifesto |
 
 Detalhes de cada adapter e o plano de fases: `planejamento/plano-api-pagamento.md`.
+
+Guia passo a passo de credenciais e webhooks por provedor: `CONFIGURACAO-GATEWAYS.md`.
