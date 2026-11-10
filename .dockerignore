@@ -1,4 +1,12 @@
 target/
+**/node_modules/
+.env
+.env.*
+**/.env
+**/.env.*
+secrets/
+**/*.p8
+**/*.p12
 .git/
 **/.git/
 planejamento/

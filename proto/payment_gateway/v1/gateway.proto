@@ -12,32 +12,20 @@ service PaymentGateway {
   rpc ParseWebhook(ParseWebhookRequest) returns (ParseWebhookResponse);
 }
 
-// Stripe Billing is separate from the one-time payment contract.
-service StripeBilling {
-  rpc Execute(BillingRequest) returns (BillingResponse);
+// Native auto-renewing subscriptions, verified with the official store libraries.
+service NativeStoreBilling {
+  rpc Execute(NativeStoreRequest) returns (BillingResponse);
 }
 
-enum BillingOperation {
-  BILLING_OPERATION_UNSPECIFIED = 0;
-  BILLING_OPERATION_CREATE_CHECKOUT = 1;
-  BILLING_OPERATION_GET_CHECKOUT = 2;
-  BILLING_OPERATION_GET_SUBSCRIPTION = 3;
-  BILLING_OPERATION_CREATE_PORTAL = 4;
+message NativeStoreRequest {
+  string operation = 1; // verify, snapshot, notification
+  string provider = 2; // apple, google
+  string professional_id = 3; // assigned by the authenticated professional API
+  string proof = 4; // Apple signed transaction / Google purchase token / notification JSON
+  string authorization = 5; // Google Pub/Sub push OIDC bearer (notification only)
 }
 
-message BillingRequest {
-  BillingOperation operation = 1;
-  string idempotency_key = 2;
-  string reference = 3;
-  string professional_id = 4;
-  string plan = 5;
-  string email = 6;
-  string success_url = 7;
-  string cancel_url = 8;
-  string external_id = 9;
-}
-
-// Provider JSON pinned to Stripe API 2024-04-10; never contains PAN/CVV.
+// Verified store snapshot; never contains card or private credential data.
 message BillingResponse {
   string json = 1;
 }

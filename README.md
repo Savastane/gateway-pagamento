@@ -155,3 +155,16 @@ cargo test --workspace
 Detalhes de cada adapter e o plano de fases: `planejamento/plano-api-pagamento.md`.
 
 Guia passo a passo de credenciais e webhooks por provedor: `CONFIGURACAO-GATEWAYS.md`.
+
+## Assinaturas nativas
+
+As assinaturas recorrentes usam **App Store (StoreKit 2)** e **Google Play Billing**.
+O fluxo de Stripe Billing/Checkout foi removido; o adapter Stripe de pagamentos
+avulsos continua independente para compatibilidade dos demais consumidores.
+
+O servico interno `gateway-native-stores` usa as bibliotecas oficiais da Apple
+e do Google, valida titularidade e persiste os vinculos no Postgres do gateway.
+Tokens Google ficam criptografados com AES-256-GCM; notificacoes sao verificadas
+por JWS/cadeia Apple ou OIDC do Pub/Sub antes de consultar o estado atual da loja.
+
+Configuracao, produtos, Docker, webhooks e testes: [NATIVE-STORES.md](NATIVE-STORES.md).

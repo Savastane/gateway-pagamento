@@ -1,5 +1,6 @@
 # --- Rust / Cargo (todos os crates do workspace) ---
 target/
+node_modules/
 **/target/
 **/*.rs.bk
 *.pdb
@@ -12,6 +13,9 @@ Cargo.lock.bak
 !**/.env.example
 *.pem
 *.key
+*.p8
+*.p12
+*.pfx
 secrets/
 *.local
 

@@ -60,6 +60,7 @@ impl Config {
 
 pub fn gateway_addrs() -> HashMap<String, String> {
     std::env::vars()
+        .filter(|(_, value)| !value.trim().is_empty())
         .filter_map(|(k, v)| {
             k.strip_prefix("GATEWAY_")
                 .and_then(|rest| rest.strip_suffix("_ADDR"))

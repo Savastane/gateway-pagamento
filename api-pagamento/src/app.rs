@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::docs;
 use crate::error::AppError;
-use crate::routes::{billing, internal, payments, refunds};
+use crate::routes::{internal, native_stores, payments, refunds};
 use crate::services::gateway_router::GatewayRouter;
 use crate::store::Store;
 use crate::usecase::create_payment::usecase::CreatePayment;
@@ -86,21 +86,22 @@ pub fn router(state: AppState) -> Router {
         .route("/payments", post(payments::create))
         .route("/payments/{id}", get(payments::get))
         .route("/payments/{id}/refunds", post(refunds::create))
-        .route("/billing/checkout-sessions", post(billing::create))
+        .route("/billing/stores/verify", post(native_stores::verify))
+        .route("/billing/stores/catalog", get(native_stores::catalog))
         .route(
-            "/billing/checkout-sessions/{id}",
-            get(billing::get_checkout),
+            "/billing/stores/ready/{provider}",
+            get(native_stores::ready),
         )
-        .route(
-            "/billing/subscriptions/{id}",
-            get(billing::get_subscription),
-        )
-        .route("/billing/portal-sessions", post(billing::portal))
+        .route("/billing/stores/{owner}", get(native_stores::snapshot))
         .route_layer(middleware::from_fn_with_state(state.clone(), api_key_auth));
 
     Router::new()
         .route("/health", get(internal::health))
         .route("/internal/gateway-events", post(internal::gateway_events))
+        .route(
+            "/webhooks/stores/{provider}",
+            post(native_stores::notification),
+        )
         .merge(
             utoipa_swagger_ui::SwaggerUi::new("/swagger-ui")
                 .url("/api-docs/openapi.json", docs::ApiDoc::openapi()),

@@ -1,0 +1,44 @@
+services:
+  gateway-native-stores:
+    build:
+      context: .
+      dockerfile: native-stores/Dockerfile
+    restart: unless-stopped
+    environment:
+      GRPC_ADDR: 0.0.0.0:50055
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-gw}
+      STORE_TOKEN_ENCRYPTION_KEY: ${STORE_TOKEN_ENCRYPTION_KEY:?configure STORE_TOKEN_ENCRYPTION_KEY}
+      STORE_CALLBACK_URL: ${STORE_CALLBACK_URL:?configure STORE_CALLBACK_URL}
+      STORE_CALLBACK_TOKEN: ${STORE_CALLBACK_TOKEN:?configure STORE_CALLBACK_TOKEN}
+      STORE_ALLOW_SANDBOX_PURCHASES: ${STORE_ALLOW_SANDBOX_PURCHASES:-false}
+      GOOGLE_APPLICATION_CREDENTIALS: /run/store-secrets/google-play.json
+      GOOGLE_PLAY_PACKAGE_NAME: ${GOOGLE_PLAY_PACKAGE_NAME:-city.bussola.profissional}
+      GOOGLE_PLAY_MONTHLY_PRODUCT: ${GOOGLE_PLAY_MONTHLY_PRODUCT:-bussola_pro_mensal}
+      GOOGLE_PLAY_YEARLY_PRODUCT: ${GOOGLE_PLAY_YEARLY_PRODUCT:-bussola_pro_anual}
+      GOOGLE_PUBSUB_AUDIENCE: ${GOOGLE_PUBSUB_AUDIENCE:-}
+      GOOGLE_PUBSUB_SERVICE_ACCOUNT: ${GOOGLE_PUBSUB_SERVICE_ACCOUNT:-}
+      APPLE_BUNDLE_ID: ${APPLE_BUNDLE_ID:-city.bussola.profissional}
+      APPLE_APP_ID: ${APPLE_APP_ID:-}
+      APPLE_ISSUER_ID: ${APPLE_ISSUER_ID:-}
+      APPLE_KEY_ID: ${APPLE_KEY_ID:-}
+      APPLE_PRIVATE_KEY_FILE: /run/store-secrets/apple-subscriptions.p8
+      APPLE_ROOT_CERTIFICATES: ${APPLE_ROOT_CERTIFICATES:-/run/store-secrets/AppleRootCA-G3.cer}
+      APPLE_STORE_ENVIRONMENT: ${APPLE_STORE_ENVIRONMENT:-Production}
+      APPLE_ALLOW_SANDBOX_FALLBACK: ${APPLE_ALLOW_SANDBOX_FALLBACK:-false}
+      APPLE_SANDBOX_ACCOUNT_IDS: ${APPLE_SANDBOX_ACCOUNT_IDS:-}
+      APPLE_MONTHLY_PRODUCT: ${APPLE_MONTHLY_PRODUCT:-city.bussola.profissional.mensal}
+      APPLE_YEARLY_PRODUCT: ${APPLE_YEARLY_PRODUCT:-city.bussola.profissional.anual}
+    volumes:
+      - ./secrets:/run/store-secrets:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    extra_hosts:
+      - host.docker.internal:host-gateway
+
+  api-pagamento:
+    environment:
+      GATEWAY_NATIVE_STORES_ADDR: http://gateway-native-stores:50055
+    depends_on:
+      gateway-native-stores:
+        condition: service_started

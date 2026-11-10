@@ -1,4 +1,5 @@
 //! Dono unico do schema do banco: concentra as migrations de todos os
+//! servicos, incluindo os vinculos de assinaturas nativas Apple/Google.
 //! servicos (api-pagamento, webhook-pagamento) para que uma unica tabela
 //! `_sqlx_migrations` versione tudo. Consumers nao devem embutir suas
 //! proprias migrations — chamar `banco::migrate` ou `banco::connect`.
