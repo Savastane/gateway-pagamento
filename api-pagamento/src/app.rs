@@ -87,8 +87,14 @@ pub fn router(state: AppState) -> Router {
         .route("/payments/{id}", get(payments::get))
         .route("/payments/{id}/refunds", post(refunds::create))
         .route("/billing/checkout-sessions", post(billing::create))
-        .route("/billing/checkout-sessions/{id}", get(billing::get_checkout))
-        .route("/billing/subscriptions/{id}", get(billing::get_subscription))
+        .route(
+            "/billing/checkout-sessions/{id}",
+            get(billing::get_checkout),
+        )
+        .route(
+            "/billing/subscriptions/{id}",
+            get(billing::get_subscription),
+        )
         .route("/billing/portal-sessions", post(billing::portal))
         .route_layer(middleware::from_fn_with_state(state.clone(), api_key_auth));
 

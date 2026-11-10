@@ -1,5 +1,5 @@
-mod client;
 mod billing;
+mod client;
 mod config;
 mod error;
 mod models;

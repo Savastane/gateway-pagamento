@@ -112,13 +112,24 @@ impl StripeClient {
         form: &[(String, String)],
         key: &str,
     ) -> Result<serde_json::Value, GatewayError> {
-        let req = self.http.post(format!("{}{}", self.api_base, path)).form(form);
-        self.send(self.apply_auth(req, Some(key)).header("Stripe-Version", "2024-04-10")).await
+        let req = self
+            .http
+            .post(format!("{}{}", self.api_base, path))
+            .form(form);
+        self.send(
+            self.apply_auth(req, Some(key))
+                .header("Stripe-Version", "2024-04-10"),
+        )
+        .await
     }
 
     pub async fn billing_get(&self, path: &str) -> Result<serde_json::Value, GatewayError> {
         let req = self.http.get(format!("{}{}", self.api_base, path));
-        self.send(self.apply_auth(req, None).header("Stripe-Version", "2024-04-10")).await
+        self.send(
+            self.apply_auth(req, None)
+                .header("Stripe-Version", "2024-04-10"),
+        )
+        .await
     }
 
     pub async fn retrieve_payment_intent(&self, id: &str) -> Result<PaymentIntent, GatewayError> {

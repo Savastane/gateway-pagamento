@@ -37,6 +37,31 @@ gateway-pagamento/
 
 ## Serviços
 
+### Stripe Billing (Assinaturas)
+
+O servico Stripe tambem implementa `StripeBilling`, separado dos RPCs de pagamentos
+avulsos. A REST autenticada com `X-Api-Key` expoe:
+
+- `POST /v1/billing/checkout-sessions`: `reference`, `professional_id`, `plan`
+  (`MENSAL`/`ANUAL`), `email`, `success_url`, `cancel_url`;
+- `GET /v1/billing/checkout-sessions/{cs_id}`;
+- `GET /v1/billing/subscriptions/{sub_id}`, com invoice expandida;
+- `POST /v1/billing/portal-sessions`: `customer`, `return_url`.
+
+POSTs exigem `Idempotency-Key`. Billing falha fechado sem `API_KEY`, mesmo em dev.
+Os precos sao definidos no gateway (4990/47900 centavos BRL, mes/ano), nunca pelo
+app. Os retornos HTTPS e IDs externos sao validados; PAN/CVV sao rejeitados.
+A chave secreta continua somente no gateway-stripe. Billing fixa Stripe API
+`2024-04-10` para estabilizar a representacao de periodos e invoices.
+
+O Checkout hospedado trata cartao e 3DS. O dono do acesso da assinatura
+(`api-profissional` da Bussola) persiste os vinculos, escolhe uma chave idempotente
+estavel, verifica assinatura do webhook e concilia invoices antes de liberar acesso.
+Configure os eventos de Billing diretamente em `/api/assinatura/webhook` dessa API;
+nao use o normalizador de eventos de PaymentIntents para invoices.
+O Customer Portal deve permitir cartao/faturas e cancelamento ao fim do periodo,
+sem troca de precos/prorata nesta versao.
+
 | Serviço | Porta | Função |
 |---|---|---|
 | `api-pagamento` | 8080 (HTTP) | REST: criar/consultar/estornar pagamentos, `/internal/gateway-events`, `/swagger-ui` |

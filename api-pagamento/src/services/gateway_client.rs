@@ -5,8 +5,13 @@ use tonic::transport::Channel;
 
 #[async_trait::async_trait]
 pub trait GatewayCaller: Send + Sync {
-    async fn billing(&self, _req: pb::BillingRequest) -> Result<pb::BillingResponse, tonic::Status> {
-        Err(tonic::Status::unimplemented("provider does not support billing"))
+    async fn billing(
+        &self,
+        _req: pb::BillingRequest,
+    ) -> Result<pb::BillingResponse, tonic::Status> {
+        Err(tonic::Status::unimplemented(
+            "provider does not support billing",
+        ))
     }
     async fn create(&self, req: pb::CreatePaymentRequest) -> Result<pb::Payment, tonic::Status>;
     async fn get(&self, external_id: &str) -> Result<pb::Payment, tonic::Status>;
