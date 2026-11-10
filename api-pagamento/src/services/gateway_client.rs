@@ -5,6 +5,9 @@ use tonic::transport::Channel;
 
 #[async_trait::async_trait]
 pub trait GatewayCaller: Send + Sync {
+    async fn billing(&self, _req: pb::BillingRequest) -> Result<pb::BillingResponse, tonic::Status> {
+        Err(tonic::Status::unimplemented("provider does not support billing"))
+    }
     async fn create(&self, req: pb::CreatePaymentRequest) -> Result<pb::Payment, tonic::Status>;
     async fn get(&self, external_id: &str) -> Result<pb::Payment, tonic::Status>;
     async fn refund(
@@ -15,17 +18,23 @@ pub trait GatewayCaller: Send + Sync {
 
 pub struct GrpcGateway {
     client: PaymentGatewayClient<Channel>,
+    billing: pb::stripe_billing_client::StripeBillingClient<Channel>,
 }
 
 impl GrpcGateway {
     pub async fn connect(addr: String) -> Result<Arc<dyn GatewayCaller>, tonic::transport::Error> {
-        let client = PaymentGatewayClient::connect(addr).await?;
-        Ok(Arc::new(Self { client }))
+        let channel = tonic::transport::Endpoint::new(addr)?.connect().await?;
+        let client = PaymentGatewayClient::new(channel.clone());
+        let billing = pb::stripe_billing_client::StripeBillingClient::new(channel);
+        Ok(Arc::new(Self { client, billing }))
     }
 }
 
 #[async_trait::async_trait]
 impl GatewayCaller for GrpcGateway {
+    async fn billing(&self, req: pb::BillingRequest) -> Result<pb::BillingResponse, tonic::Status> {
+        Ok(self.billing.clone().execute(req).await?.into_inner())
+    }
     async fn create(&self, req: pb::CreatePaymentRequest) -> Result<pb::Payment, tonic::Status> {
         self.client
             .clone()

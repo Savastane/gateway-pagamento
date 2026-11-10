@@ -1,4 +1,5 @@
 mod client;
+mod billing;
 mod config;
 mod error;
 mod models;
@@ -7,6 +8,7 @@ mod webhook;
 
 use config::Config;
 use gateway_proto::payment_gateway::v1::payment_gateway_server::PaymentGatewayServer;
+use gateway_proto::payment_gateway::v1::stripe_billing_server::StripeBillingServer;
 use service::StripeGateway;
 use tonic::transport::Server;
 use tracing_subscriber::EnvFilter;
@@ -26,6 +28,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         config.api_version.clone(),
         config.http_timeout,
     )?;
+    let billing = billing::Billing(client.clone());
     let gateway = StripeGateway::new(client, config.webhook_secret.clone());
 
     let (mut reporter, health_service) = tonic_health::server::health_reporter();
@@ -42,6 +45,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .add_service(health_service)
         .add_service(reflection)
         .add_service(PaymentGatewayServer::new(gateway))
+        .add_service(StripeBillingServer::new(billing))
         .serve(config.grpc_addr)
         .await?;
     Ok(())

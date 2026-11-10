@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::docs;
 use crate::error::AppError;
-use crate::routes::{internal, payments, refunds};
+use crate::routes::{billing, internal, payments, refunds};
 use crate::services::gateway_router::GatewayRouter;
 use crate::store::Store;
 use crate::usecase::create_payment::usecase::CreatePayment;
@@ -20,6 +20,7 @@ use utoipa::OpenApi;
 
 #[derive(Clone)]
 pub struct AppState {
+    pub billing_router: GatewayRouter,
     pub store: Arc<dyn Store>,
     pub create_payment: Arc<CreatePayment>,
     pub get_payment: Arc<GetPayment>,
@@ -31,6 +32,7 @@ pub struct AppState {
 impl AppState {
     pub fn new(store: Arc<dyn Store>, router: GatewayRouter, cfg: &Config) -> Self {
         Self {
+            billing_router: router.clone(),
             create_payment: Arc::new(CreatePayment {
                 store: store.clone(),
                 router: router.clone(),
@@ -84,6 +86,10 @@ pub fn router(state: AppState) -> Router {
         .route("/payments", post(payments::create))
         .route("/payments/{id}", get(payments::get))
         .route("/payments/{id}/refunds", post(refunds::create))
+        .route("/billing/checkout-sessions", post(billing::create))
+        .route("/billing/checkout-sessions/{id}", get(billing::get_checkout))
+        .route("/billing/subscriptions/{id}", get(billing::get_subscription))
+        .route("/billing/portal-sessions", post(billing::portal))
         .route_layer(middleware::from_fn_with_state(state.clone(), api_key_auth));
 
     Router::new()
